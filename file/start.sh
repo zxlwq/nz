@@ -454,11 +454,20 @@ while true; do
         trigger=0
         reason=""
 
-        if [ -z "$latest_file" ]; then
+        # 读取 README.md 原文，检查手动触发标记
+        readme_raw=$(curl -s --retry 3 --retry-delay 3 \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.raw" \
+            "https://api.github.com/repos/$GITHUB_REPO_OWNER/$GITHUB_REPO_NAME/contents/README.md?ref=${GITHUB_BRANCH:-main}" \
+            | tr -d '[:space:]')
+
+        if [ "$readme_raw" = "backup" ]; then
+            trigger=1
+            reason="README 手动触发标记"
+        elif [ -z "$latest_file" ]; then
             trigger=1
             reason="仓库中无备份文件"
         else
-            # 从文件名提取日期：data-2026-09-17-23-12-10.zip → 2026-09-17
             latest_date=$(echo "$latest_file" | sed -E 's/^data-([0-9]{4}-[0-9]{2}-[0-9]{2})-.*/\1/')
             if [ "$latest_date" != "$current_date" ] && [ "$current_hour" -ge 4 ]; then
                 trigger=1
